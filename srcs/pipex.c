@@ -6,7 +6,7 @@
 /*   By: npolack <npolack@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/10 19:35:45 by npolack           #+#    #+#             */
-/*   Updated: 2024/12/11 12:41:58 by npolack          ###   ########.fr       */
+/*   Updated: 2024/12/11 13:26:14 by npolack          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -117,8 +117,8 @@ int	main(int ac, char** av, char **env)
 	i = 1;
 	while (i <= nb_of_cmd)
 	{
-		pid = fork();
 		pipe(pipefd);
+		pid = fork();
 		if (pid == 0)
 		{
 			cmd = get_full_path(paths, av[i + 1]);
@@ -133,7 +133,8 @@ int	main(int ac, char** av, char **env)
 				dup2(pipefd[1], 1);
 			close(pipefd[1]);
 			close(pipefd[0]);
-			execve(cmd, args, env);
+			if (execve(cmd, args, env) == -1)
+				exit(0);
 		}
 		i++;
 	}
