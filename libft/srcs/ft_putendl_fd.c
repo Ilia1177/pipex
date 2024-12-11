@@ -6,7 +6,7 @@
 /*   By: npolack <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/10 14:48:40 by npolack           #+#    #+#             */
-/*   Updated: 2024/12/07 12:42:21 by npolack          ###   ########.fr       */
+/*   Updated: 2024/12/11 18:06:53 by npolack          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,6 @@ void	ft_putendl_fd(char *s, int fd)
 {
 	if (!s)
 		return ;
-	while (*s)
-		write(fd, s++, 1);
+	write(fd, s, ft_strlen(s));
 	write(fd, "\n", 1);
 }
