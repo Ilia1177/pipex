@@ -6,10 +6,9 @@
 #    By: npolack <npolack@student.42.fr>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/12/10 19:49:02 by npolack           #+#    #+#              #
-#    Updated: 2024/12/10 22:52:59 by npolack          ###   ########.fr        #
+#    Updated: 2024/12/11 11:30:25 by npolack          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
-
 
 NAME 	= pipex
 OBJ_DIR = obj
@@ -21,8 +20,9 @@ OBJS = $(SRCS: $(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 CC = cc
 
 all : $(NAME)
-$(NAME) : $(LIBFT) $(OBJS)
-	$(CC) $(LIBFT) $(OBJS) -o $(NAME) 
+
+$(NAME) : $(OBJS) $(LIBFT)
+	$(CC) $< -o $(NAME) -L./libft/bin -lft 
 
 $(OBJ_DIR)/%.o : $(SRC_DIR)/%.c
 	mkdir -p $(OBJ_DIR)
