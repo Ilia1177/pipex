@@ -6,116 +6,22 @@
 /*   By: npolack <npolack@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/10 19:35:45 by npolack           #+#    #+#             */
-/*   Updated: 2024/12/11 21:56:26 by npolack          ###   ########.fr       */
+/*   Updated: 2024/12/12 19:41:57 by npolack          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../include/pipex.h"
 
-void	printargs(char **args);
-
-char	**get_paths(char **env)
+int	make_child(int fd_input, int fd_output, char **args, char **env)
 {
-	char **paths;
-	int		i;
-
-	paths = NULL;
-	i = 0;
-	while (env[i])
+	dup2(fd_input, 0);
+	dup2(fd_output, 1);
+	if (execve(args[0], args, env) == -1)
 	{
-		if (!ft_strncmp(env[i], "PATH=", 5))
-		{
-			env[i] += 5;
-			paths = ft_split(env[i], ':');
-			env[i] -= 5;
-			return (paths);
-		}
-		i++;
+		ft_putendl_fd("ERROR", 2);
+		exit(0);
 	}
-
-	return (paths);
-}
-
-char *get_full_path(char **paths, char *str)
-{
-	int	i;
-	char *full_path;
-	char *cmd;
-	char *tmp;
-
-	tmp = malloc(sizeof(char) * (ft_strnlen(str, ' ') + 1));
-	i = -1;
-	while (++i < ft_strnlen(str, ' '))
-		tmp[i] = str[i];
-	tmp[i] = '\0';
-	cmd = ft_strjoin("/", tmp);
-	free(tmp);
-	i = 0;
-	while (paths[i])
-	{
-		full_path = ft_strjoin(paths[i], cmd);
-		if (!access(full_path, X_OK))
-		{
-			free(cmd);
-			return (full_path);	
-		}
-		free(full_path);
-		i++;
-	}
-	free(cmd);
-	return (NULL);
-}
-
-char	**build_args(char *av, char *cmd)
-{
-	char **args;
-	char *string;
-	char *tmp;
-
-	while(*av && *av != ' ')
-		av++;
-	string = ft_strjoin(cmd, " ");
-	tmp = string;
-	string = ft_strjoin(tmp, av);
-	args = ft_split(string, ' ');
-	free(tmp);
-	return (args);
-}
-
-int free_all(char **args)
-{
-	int	i;
-
-	i = 0;
-	while (args[i])
-	{
-		free(args[i]);
-		i++;
-	}
-	free(args);
-	return (0);
-}
-
-void wait_all_child(int child_nb) 
-{
-	int status;
-	int n = 0;
-	while (n < child_nb)
-	{
-		wait(&status);
-		n++;
-	}
-}
-void	printargs(char **args)
-{
-	int	i;
-
-	i = 0;
-	while (args[i])
-	{
-		ft_putendl_fd(args[i], 2);
-		i++;
-	}
+	return (-1);
 }
 
 int	main(int ac, char** av, char **env)
@@ -131,45 +37,89 @@ int	main(int ac, char** av, char **env)
 	int		i;
 
 	paths = get_paths(env);
-	fd_in = open("test", O_RDONLY, 0777);
-	fd_out = open("OUTF", O_CREAT | O_WRONLY | O_APPEND, 0666);
+	fd_in = open(av[1], O_RDONLY, 0777);
+	fd_out = open(av[ac - 1], O_CREAT | O_WRONLY | O_APPEND, 0777);
 	nb_of_cmd = ac - 3;
 	i = 1;
-	while (i <= nb_of_cmd)
+	if (nb_of_cmd == 1)
 	{
-		//if (i % 2 == 1)
-			pipe(pipefd);
-		pid = fork();
-		if (!pid)
+		dup2(fd_in, 0);
+		dup2(fd_out, 1);
+		close(fd_in);
+		close(fd_out);
+		cmd = get_full_path(paths, av[i + 1]);
+		args = build_args(av[i + 1], cmd);
+		if (!execve(cmd, args, env))
 		{
-			cmd = get_full_path(paths, av[i + 1]);
-			args = build_args(av[i + 1], cmd);
-			if (i == 1)
-			{
-				dup2(fd_in, 0);
-				dup2(pipefd[1], 1);
-				//close(pipefd[1]);
-			}
-			if (i == 2)
-			{
-				dup2(fd_out, 1);
-				dup2(pipefd[0], 0);
-				//close(pipefd[0]);
-			}
-			if (execve(cmd, args, env) == -1)
-			{
-				ft_putendl_fd("ERROR", 2);
-				exit(0);
-			}
+			ft_putendl_fd("ERROR", 2);
+			exit(0);
 		}
-		//else
-		//	waitpid(-1, NULL, 0);
-		i++;
 	}
-	// Wait for all child processes
-	waitpid(-1, NULL, 0);
-    close(pipefd[0]);
-    close(pipefd[1]);
+	else 	
+	{
+		int fd_tmp;
+
+			i = 1;
+			while (i <= nb_of_cmd)
+			{
+				pipe(pipefd);
+				pid = fork();
+				if (!pid)
+				{
+					cmd = get_full_path(paths, av[i + 1]);
+					args = build_args(av[i + 1], cmd);
+					if (i == 1)
+					{
+						make_child(fd_in, pipefd[1], args, env);
+
+
+						close(fd_in);
+						close(fd_out);
+						close(pipefd[1]);
+						close(pipefd[0]);
+					}
+					else if (i == nb_of_cmd)
+					{
+						make_child(fd_tmp, fd_out, args, env);
+						//dup2(fd_out, 1);
+					//	dup2(fd_tmp, 0);
+
+						close(fd_in);
+						close(fd_out);
+						close(fd_tmp);
+						close(pipefd[0]);
+						close(pipefd[1]);
+					}
+					else 
+					{
+						make_child(fd_tmp, pipefd[1], args, env);
+						/*dup2(fd_tmp, 0);
+						dup2(pipefd[1], 1);*/
+
+						close(fd_in);
+						close(fd_out);
+						close(fd_tmp);
+						close(pipefd[0]);
+						close(pipefd[1]);
+					}
+	
+				}
+				else
+				{
+					//close(fd_tmp);
+					fd_tmp = dup(pipefd[0]);
+					close(pipefd[1]);
+					close(pipefd[0]);
+					while (waitpid(-1, NULL, WUNTRACED) != -1)
+						;
+				}
+				i++;
+			}
+			free_all(paths);
+			close(fd_tmp);
+	}
+    //close(pipefd[0]);
+    //close(pipefd[1]);
 	return (0);
 }
 
